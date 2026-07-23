@@ -23,6 +23,12 @@ export const DEFAULT_CORNER_RADIUS = 24;
 export const DEFAULT_HEAD_TRIM_MS = 1000;
 export const DEFAULT_TAIL_TRIM_MS = 1000;
 
+// "Upload video" (file input + drag-drop) is temporarily disabled — its export
+// path is producing broken GIFs and needs more debugging. Screen recording is
+// unaffected by this flag: its completion handler passes fromTabRecorder=true,
+// which bypasses the gate in App.jsx's handleVideoFile.
+export const UPLOAD_VIDEO_ENABLED = false;
+
 // fps           — prototype recording / GIF fps for screen-capture mode
 // maxFps        — max fps for video-file mode (source fps is capped at this)
 // quality       — gifski quality 0–100 (100 = lossy OFF, max fidelity, largest +

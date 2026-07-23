@@ -4,6 +4,7 @@ import {
   DEFAULT_HEAD_TRIM_MS,
   DEFAULT_TAIL_TRIM_MS,
   MIN_FRAME_DURATION_MS,
+  UPLOAD_VIDEO_ENABLED,
   presetFor,
 } from './constants.js';
 import { extractFigmaInput, toFigmaEmbedUrls } from './lib/figma-url.js';
@@ -213,6 +214,10 @@ export default function App() {
   // Gifski-style: we keep the file whole and play it natively. No frames are
   // extracted up front — they're sampled from the trim window at export time.
   const handleVideoFile = useCallback(async (file, { fromTabRecorder = false } = {}) => {
+    if (!fromTabRecorder && !UPLOAD_VIDEO_ENABLED) {
+      dispatch({ type: 'SET_STATUS', status: 'Video upload is coming soon — check back later.' });
+      return;
+    }
     if (!isVideoFile(file)) {
       dispatch({ type: 'SET_STATUS', status: 'Upload a video file such as MP4, MOV, or WebM.' });
       return;

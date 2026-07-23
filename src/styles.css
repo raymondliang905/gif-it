@@ -785,6 +785,24 @@ input[type="range"] {
   background: rgba(255, 210, 46, 0.08);
 }
 
+.source-button.is-disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.coming-soon-badge {
+  padding: 2px 8px;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #d6efe8;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid #323735;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+
 /* Hidden file input inside the upload label */
 .source-button input {
   position: absolute;
