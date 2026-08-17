@@ -43,6 +43,8 @@ import BrowserWarning from './components/BrowserWarning.jsx';
 import GifPreviewStage from './components/GifPreviewStage.jsx';
 import GifResultPreview from './components/GifResultPreview.jsx';
 import TimelineShell from './components/TimelineShell.jsx';
+import { Analytics } from '@vercel/analytics/react';
+import { SpeedInsights } from '@vercel/speed-insights/react';
 
 function cacheBustEmbedUrl(rawUrl, attempt) {
   const url = new URL(rawUrl);
@@ -971,6 +973,10 @@ export default function App() {
       {/* Hidden capture targets */}
       <video ref={captureVideoRef} className="visually-hidden" playsInline muted />
       <canvas ref={captureCanvasRef} hidden />
+
+      {/* Vercel Web Analytics + Speed Insights (no-op off Vercel) */}
+      <Analytics />
+      <SpeedInsights />
     </div>
   );
 }
