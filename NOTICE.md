@@ -27,11 +27,3 @@ which is what satisfies §13 for this public deployment.
 
 This program comes with ABSOLUTELY NO WARRANTY, to the extent permitted by
 applicable law.
-
-## Origin
-
-This app started as an internal Affirm tool (Quicksilver `gif-it`) at
-https://github.com/Affirm/lakehouse/tree/main/quicksilver/apps/gif-it, which
-runs the same frontend behind Affirm SSO. This repository is a standalone,
-publicly-licensed fork of that frontend, adapted to be served from GitHub
-Pages (see `README.md`). The two copies are not kept in sync automatically.
