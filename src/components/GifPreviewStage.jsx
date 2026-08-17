@@ -78,7 +78,12 @@ const GifPreviewStage = forwardRef(function GifPreviewStage(
             style={{
               width: displaySize.width ? `${displaySize.width}px` : undefined,
               height: displaySize.height ? `${displaySize.height}px` : undefined,
-              objectFit: 'fill',
+              // 'contain' (not 'fill'): screen/window MediaRecorder captures can
+              // be variable-resolution — the first frame sets the box size, then
+              // later frames arrive at a different resolution. 'fill' stretched
+              // them into the first-frame box (the "squeeze after frame 1"); with
+              // 'contain' each frame keeps its true aspect instead.
+              objectFit: 'contain',
               background: '#050706',
             }}
           />

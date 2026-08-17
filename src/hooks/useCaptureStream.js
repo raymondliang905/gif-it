@@ -14,44 +14,35 @@ export function useCaptureStream({ videoRef, captureStageRef, captureCanvasRef }
   const streamRef = useRef(null);
   const captureTimerRef = useRef(null);
   const onEndedRef = useRef(null);
-  // Output canvas dims, pinned once per recording so every frame is the same
-  // size (the encoder requires uniform frames).
-  const outputDimsRef = useRef(null);
+  // The full source→output sampling transform (crop rect in video px + output
+  // canvas dims), pinned once at the first real capture frame and reused for
+  // every subsequent frame. Recomputing it per frame let the mapping drift —
+  // e.g. Chrome's "sharing this tab" bar shrinks window.innerHeight right after
+  // capture starts, which inflated scaleY and squeezed every frame after the
+  // first. Pinning keeps all frames uniformly sized AND identically sampled.
+  const sampleRef = useRef(null);
 
   const setOnEnded = useCallback((cb) => {
     onEndedRef.current = cb;
   }, []);
 
-  const drawStageSnapshot = useCallback((width, height) => {
+  // Compute the live source→output transform from the current stage rect, the
+  // captured video resolution, and the viewport size.
+  const computeSample = useCallback((width, height) => {
     const video = videoRef.current;
     const stage = captureStageRef.current;
-    const captureCanvas = captureCanvasRef.current;
-    if (!video || !stage || !captureCanvas || !video.videoWidth || !video.videoHeight) {
-      return null;
-    }
+    if (!video || !stage || !video.videoWidth || !video.videoHeight) return null;
     const rect = stage.getBoundingClientRect();
 
     // Output dims: keep the requested width as the long edge, but derive height
     // from the stage's true on-screen aspect ratio, NOT the caller's height —
     // state.stage.height is clamped/floored independently of width, so it can
-    // carry a wrong aspect. Combined with the per-axis source sampling below,
-    // drawing into a stage-aspect canvas cancels non-uniform capture scaling
-    // and reproduces the stage's real proportions. Pinned for the whole
-    // recording so frame sizes stay uniform.
-    if (!outputDimsRef.current) {
-      const stageAspect = rect.height > 0 ? rect.width / rect.height : width / height;
-      outputDimsRef.current = {
-        width,
-        height: Math.max(1, Math.round(width / stageAspect)),
-      };
-    }
-    const outW = outputDimsRef.current.width;
-    const outH = outputDimsRef.current.height;
-    captureCanvas.width = outW;
-    captureCanvas.height = outH;
-    const ctx = captureCanvas.getContext('2d', { willReadFrequently: true });
-    ctx.imageSmoothingEnabled = true;
-    ctx.imageSmoothingQuality = 'high';
+    // carry a wrong aspect. Drawing into a stage-aspect canvas cancels
+    // non-uniform capture scaling and reproduces the stage's real proportions.
+    const stageAspect = rect.height > 0 ? rect.width / rect.height : width / height;
+    const outW = width;
+    const outH = Math.max(1, Math.round(width / stageAspect));
+
     // The captured frame is the ENTIRE tab viewport rastered to videoWidth ×
     // videoHeight, so the CSS-px → video-px mapping is linear and INDEPENDENT
     // per axis: horizontal = videoWidth/innerWidth, vertical = videoHeight/innerHeight.
@@ -64,9 +55,32 @@ export function useCaptureStream({ videoRef, captureStageRef, captureCanvasRef }
     const sourceWidth = Math.max(1, Math.min(video.videoWidth - sourceX, rect.width * scaleX));
     const sourceHeight = Math.max(1, Math.min(video.videoHeight - sourceY, rect.height * scaleY));
 
+    return { outW, outH, sourceX, sourceY, sourceWidth, sourceHeight };
+  }, [videoRef, captureStageRef]);
+
+  const drawStageSnapshot = useCallback((width, height, { pin = false } = {}) => {
+    const video = videoRef.current;
+    const captureCanvas = captureCanvasRef.current;
+    if (!video || !captureCanvas || !video.videoWidth || !video.videoHeight) return null;
+
+    // Reuse the pinned transform once set (recording loop); otherwise compute it
+    // live (warm-up / settling, where pin is false so it is never stored).
+    let sample = sampleRef.current;
+    if (!sample) {
+      sample = computeSample(width, height);
+      if (!sample) return null;
+      if (pin) sampleRef.current = sample;
+    }
+
+    const { outW, outH, sourceX, sourceY, sourceWidth, sourceHeight } = sample;
+    captureCanvas.width = outW;
+    captureCanvas.height = outH;
+    const ctx = captureCanvas.getContext('2d', { willReadFrequently: true });
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = 'high';
     ctx.drawImage(video, sourceX, sourceY, sourceWidth, sourceHeight, 0, 0, outW, outH);
     return ctx.getImageData(0, 0, outW, outH);
-  }, [videoRef, captureStageRef, captureCanvasRef]);
+  }, [videoRef, captureCanvasRef, computeSample]);
 
   const stopStream = useCallback(() => {
     if (captureTimerRef.current) {
@@ -86,7 +100,7 @@ export function useCaptureStream({ videoRef, captureStageRef, captureCanvasRef }
   const startStream = useCallback(async (fps) => {
     const unsupported = captureSupportMessage();
     if (unsupported) throw new Error(unsupported);
-    outputDimsRef.current = null; // re-pin output dims from the next session's stage rect
+    sampleRef.current = null; // re-pin the sampling transform for the next session
 
     const stream = await navigator.mediaDevices.getDisplayMedia({
       video: { frameRate: fps, displaySurface: 'browser' },
@@ -129,7 +143,8 @@ export function useCaptureStream({ videoRef, captureStageRef, captureCanvasRef }
     const intervalMs = Math.round(1000 / Math.max(1, fps));
     const startedAt = performance.now();
     const tick = () => {
-      const snapshot = drawStageSnapshot(width, height);
+      // Pin the sampling transform on the first frame; all later frames reuse it.
+      const snapshot = drawStageSnapshot(width, height, { pin: true });
       if (!snapshot) return;
       onFrame({ imageData: snapshot, capturedAt: performance.now() - startedAt });
     };

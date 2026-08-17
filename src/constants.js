@@ -1,3 +1,9 @@
+// Video file upload (the "Upload video" picker + drag-and-drop onto the stage)
+// is gated off while the video → GIF export path is being finished. The tab
+// "Record screen" flow still routes through the video pipeline. Flip to true to
+// re-enable the file-upload entry points.
+export const VIDEO_UPLOAD_ENABLED = false;
+
 export const DEFAULT_STAGE_SIZE = 900;
 export const MIN_STAGE_SIZE = 240;
 export const MAX_STAGE_SIZE = 1920;
@@ -22,12 +28,6 @@ export const DEFAULT_QUALITY_PRESET = 'best';
 export const DEFAULT_CORNER_RADIUS = 24;
 export const DEFAULT_HEAD_TRIM_MS = 1000;
 export const DEFAULT_TAIL_TRIM_MS = 1000;
-
-// "Upload video" (file input + drag-drop) is temporarily disabled — its export
-// path is producing broken GIFs and needs more debugging. Screen recording is
-// unaffected by this flag: its completion handler passes fromTabRecorder=true,
-// which bypasses the gate in App.jsx's handleVideoFile.
-export const UPLOAD_VIDEO_ENABLED = false;
 
 // fps           — prototype recording / GIF fps for screen-capture mode
 // maxFps        — max fps for video-file mode (source fps is capped at this)

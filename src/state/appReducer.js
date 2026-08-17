@@ -46,7 +46,7 @@ export function initialState() {
     frames: [],                           // [{ imageData, capturedAt }]
     trim: { start: 0, end: 0, displayed: 0 },
     crop: { rect: null },
-    encoding: { isEncoding: false, progress: 0, status: '', indeterminate: false },
+    encoding: { isEncoding: false, progress: 0, status: '', indeterminate: false, error: '' },
     output: { url: '', sizeBytes: 0 },
     status: 'Ready',
     drawerOpen: false,
@@ -239,6 +239,9 @@ export function reducer(state, action) {
           progress: action.progress ?? state.encoding.progress,
           status: action.status ?? state.encoding.status,
           indeterminate: action.indeterminate ?? state.encoding.indeterminate,
+          // Starting a run clears any prior error; a failed run (isEncoding
+          // false) records action.error so the UI can surface it.
+          error: action.isEncoding ? '' : (action.error ?? state.encoding.error),
         },
       };
 
@@ -249,7 +252,7 @@ export function reducer(state, action) {
       return {
         ...state,
         output: { url: action.url, sizeBytes: action.sizeBytes },
-        encoding: { isEncoding: false, progress: 100, status: '', indeterminate: false },
+        encoding: { isEncoding: false, progress: 100, status: '', indeterminate: false, error: '' },
       };
 
     case 'CLEAR_OUTPUT':

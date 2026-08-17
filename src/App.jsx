@@ -4,7 +4,7 @@ import {
   DEFAULT_HEAD_TRIM_MS,
   DEFAULT_TAIL_TRIM_MS,
   MIN_FRAME_DURATION_MS,
-  UPLOAD_VIDEO_ENABLED,
+  VIDEO_UPLOAD_ENABLED,
   presetFor,
 } from './constants.js';
 import { extractFigmaInput, toFigmaEmbedUrls } from './lib/figma-url.js';
@@ -214,10 +214,6 @@ export default function App() {
   // Gifski-style: we keep the file whole and play it natively. No frames are
   // extracted up front — they're sampled from the trim window at export time.
   const handleVideoFile = useCallback(async (file, { fromTabRecorder = false } = {}) => {
-    if (!fromTabRecorder && !UPLOAD_VIDEO_ENABLED) {
-      dispatch({ type: 'SET_STATUS', status: 'Video upload is coming soon — check back later.' });
-      return;
-    }
     if (!isVideoFile(file)) {
       dispatch({ type: 'SET_STATUS', status: 'Upload a video file such as MP4, MOV, or WebM.' });
       return;
@@ -507,8 +503,10 @@ export default function App() {
       dispatch({ type: 'SET_STATUS', status: `GIF ready · ${label}` });
     };
     const failOutput = (message) => {
-      dispatch({ type: 'SET_ENCODING', isEncoding: false });
-      dispatch({ type: 'SET_STATUS', status: message || 'Encoding failed.' });
+      const text = message || 'Encoding failed.';
+      console.error('[gif-it] GIF export failed:', text);
+      dispatch({ type: 'SET_ENCODING', isEncoding: false, error: text });
+      dispatch({ type: 'SET_STATUS', status: text });
     };
 
     // ── Real gifski (imagequant global palette + Floyd–Steinberg dither + lossy
@@ -582,9 +580,13 @@ export default function App() {
           signal: controller.signal,
         });
       } catch (error) {
-        dispatch({ type: 'SET_ENCODING', isEncoding: false });
         if (!controller.signal.aborted) {
-          dispatch({ type: 'SET_STATUS', status: error.message || 'Could not sample video frames.' });
+          const text = error.message || 'Could not sample video frames.';
+          console.error('[gif-it] video frame sampling failed:', text);
+          dispatch({ type: 'SET_ENCODING', isEncoding: false, error: text });
+          dispatch({ type: 'SET_STATUS', status: text });
+        } else {
+          dispatch({ type: 'SET_ENCODING', isEncoding: false });
         }
         return;
       } finally {
@@ -617,8 +619,10 @@ export default function App() {
         { onProgress: (p) => dispatch({ type: 'SET_ENCODING_PROGRESS', progress: 3 + p * 47 }) },
       );
     } catch (error) {
-      dispatch({ type: 'SET_ENCODING', isEncoding: false });
-      dispatch({ type: 'SET_STATUS', status: error.message || 'Could not prepare GIF frames.' });
+      const text = error.message || 'Could not prepare GIF frames.';
+      console.error('[gif-it] GIF frame preparation failed:', text);
+      dispatch({ type: 'SET_ENCODING', isEncoding: false, error: text });
+      dispatch({ type: 'SET_STATUS', status: text });
       return;
     }
 
@@ -639,6 +643,7 @@ export default function App() {
 
   // ============ Drag/drop ============
   const handleDragEnter = useCallback((event) => {
+    if (!VIDEO_UPLOAD_ENABLED) return;
     if (!Array.from(event.dataTransfer?.types ?? []).includes('Files')) return;
     event.preventDefault();
     event.stopPropagation();
@@ -646,6 +651,7 @@ export default function App() {
     dispatch({ type: 'SET_DRAG_DROP', active: true });
   }, []);
   const handleDragLeave = useCallback((event) => {
+    if (!VIDEO_UPLOAD_ENABLED) return;
     if (!Array.from(event.dataTransfer?.types ?? []).includes('Files')) return;
     event.preventDefault();
     event.stopPropagation();
@@ -653,12 +659,14 @@ export default function App() {
     if (dragDepthRef.current === 0) dispatch({ type: 'SET_DRAG_DROP', active: false });
   }, []);
   const handleDragOver = useCallback((event) => {
+    if (!VIDEO_UPLOAD_ENABLED) return;
     if (!Array.from(event.dataTransfer?.types ?? []).includes('Files')) return;
     event.preventDefault();
     event.stopPropagation();
     event.dataTransfer.dropEffect = 'copy';
   }, []);
   const handleDrop = useCallback((event) => {
+    if (!VIDEO_UPLOAD_ENABLED) return;
     if (!Array.from(event.dataTransfer?.types ?? []).includes('Files')) return;
     event.preventDefault();
     event.stopPropagation();
@@ -675,9 +683,12 @@ export default function App() {
     };
     const onDrop = (event) => {
       if (!Array.from(event.dataTransfer?.types ?? []).includes('Files')) return;
+      // Always swallow the drop so the browser doesn't navigate to the dropped
+      // file, but only route it into the video pipeline when uploads are enabled.
       event.preventDefault();
       dragDepthRef.current = 0;
       dispatch({ type: 'SET_DRAG_DROP', active: false });
+      if (!VIDEO_UPLOAD_ENABLED) return;
       const file = Array.from(event.dataTransfer.files ?? [])[0];
       if (file) handleVideoFile(file);
     };

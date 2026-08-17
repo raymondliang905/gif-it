@@ -15,7 +15,11 @@ export function usePreviewPlayback({ frames, trimStart, trimEnd, fps, onTick }) 
 
   const start = useCallback((startFrame = trimStart) => {
     if (!frames.length) return;
-    frameRef.current = Math.max(trimStart, Math.min(trimEnd, startFrame));
+    // Clamp the requested start into the trimmed range. If the cursor is already
+    // at (or past) the end, loop back to trimStart so pressing play replays the
+    // selection from the beginning instead of instantly stopping on the last frame.
+    const clamped = Math.max(trimStart, Math.min(trimEnd, startFrame));
+    frameRef.current = clamped >= trimEnd ? trimStart : clamped;
     setIsPlaying(true);
     const intervalMs = Math.round(1000 / Math.max(1, fps));
     const tick = () => {

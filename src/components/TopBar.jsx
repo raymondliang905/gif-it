@@ -20,15 +20,27 @@ export default function TopBar({
       <p className="status-text visually-hidden" aria-live="polite">
         {status}
       </p>
-      <button
-        type="button"
-        className="brand-button"
-        onClick={onHome}
-        disabled={isBusy}
-        aria-label="Go to GIFit start screen"
-      >
-        <img src={`${import.meta.env.BASE_URL}assets/gifit-logo.svg`} alt="GIFit" draggable="false" />
-      </button>
+      <div className="brand-cluster">
+        <button
+          type="button"
+          className="brand-button"
+          onClick={onHome}
+          disabled={isBusy}
+          aria-label="Go to GIFit start screen"
+        >
+          <img src={`${import.meta.env.BASE_URL}assets/gifit-logo.svg`} alt="GIFit" draggable="false" />
+        </button>
+        {!isRecording && (
+          <button
+            type="button"
+            className="ghost-button home-button"
+            onClick={onHome}
+            disabled={isBusy}
+          >
+            Home
+          </button>
+        )}
+      </div>
 
       <div className="viewer-actions">
         {!isRecording && !isVideoSource && (
@@ -47,11 +59,12 @@ export default function TopBar({
             <button id="stopButton" type="button" onClick={onStop}>
               Stop
             </button>
-            <span className={`recording-timer${recordingSeconds >= 15 ? ' is-over' : ''}`}>
+            <span
+              className={`recording-pill${recordingSeconds >= 15 ? ' is-over' : ''}`}
+              title="Keep recordings under 15s"
+            >
+              <span className="recording-dot" aria-hidden="true" />
               {Math.floor(recordingSeconds)}s
-            </span>
-            <span className="shortcut-tip">
-              Keep under <strong>15s</strong>
             </span>
           </>
         )}
@@ -67,22 +80,14 @@ export default function TopBar({
           </button>
         )}
 
-        {hasPrototype && !isRecording && !hasCapturedTake && (
-          <span className="shortcut-tip">
-            Press <kbd>R</kbd> to reset interaction
+        {hasPrototype && (isRecording || !hasCapturedTake) && (
+          <span className="hint-tip">
+            Press <kbd className="hint-kbd">R</kbd> to replay from starting point
           </span>
         )}
+      </div>
 
-        {!isRecording && (
-          <button
-            type="button"
-            onClick={onHome}
-            disabled={isBusy}
-          >
-            Menu
-          </button>
-        )}
-
+      <div className="utility-actions">
         <OpenSourceNotice />
       </div>
     </header>

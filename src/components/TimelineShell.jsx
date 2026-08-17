@@ -266,9 +266,15 @@ export default function TimelineShell({
       )}
 
       {!isEncoding && (
-        <span className="trim-info">
-          {seconds}s{sizeLabel}
-        </span>
+        encoding.error && !hasOutput ? (
+          <span className="encode-error" role="alert" title={encoding.error}>
+            Export failed — {encoding.error}
+          </span>
+        ) : (
+          <span className="trim-info">
+            {seconds}s{sizeLabel}
+          </span>
+        )
       )}
 
       <div className="timeline-actions">
