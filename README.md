@@ -9,22 +9,6 @@ all run client-side (canvas capture + WebAssembly + IndexedDB).
 
 **Live:** https://raymondliang905.github.io/gif-it/
 
-## Origin
-
-This is a public, standalone fork of the frontend for the internal Affirm
-Quicksilver app
-[`gif-it`](https://github.com/Affirm/lakehouse/tree/main/quicksilver/apps/gif-it),
-adapted to be served as a static site from GitHub Pages instead of behind
-Affirm SSO on Snowflake SPCS. The two copies are not kept in sync
-automatically — see [NOTICE.md](./NOTICE.md).
-
-The Pages deployment exists because Quicksilver's SPCS ingress proxy injects
-its own baseline Content-Security-Policy, and the browser applies the
-strictest intersection of that proxy CSP and any app-set CSP — so the app
-cannot loosen `frame-src` enough to reliably render the cross-origin Figma
-prototype iframe. GitHub Pages injects no CSP, so the iframe renders natively
-with no workaround needed.
-
 ## Development
 
 ```bash
