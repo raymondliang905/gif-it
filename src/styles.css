@@ -134,20 +134,47 @@ button:disabled {
   font-weight: 760;
 }
 
-/* Full-text hotkey tip shown before + during recording (Figma's own "R" replay
-   shortcut restarts the embedded prototype from its first frame). */
+/* Hotkey guidance rotates before recording; replay remains visible while the
+   capture is running. */
 .hint-tip {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
+  height: 22px;
+  overflow: hidden;
   color: var(--muted);
   font-size: 12px;
   font-weight: 600;
   white-space: nowrap;
 }
 
+.hint-tip-viewport {
+  display: block;
+  height: 22px;
+  overflow: hidden;
+}
+
+.hint-tip-track {
+  display: grid;
+  grid-auto-rows: 22px;
+  transform: translateY(calc(var(--hint-tip-index, 0) * -22px));
+  transition: transform 280ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.hint-tip-copy {
+  height: 22px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
 .hint-tip .hint-kbd {
   margin: 0 1px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hint-tip-track {
+    transition: none;
+  }
 }
 
 .app-shell {

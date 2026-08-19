@@ -1,4 +1,19 @@
+import { useEffect, useState } from 'react';
+
 import OpenSourceNotice from './OpenSourceNotice.jsx';
+
+const RECORDING_TIPS = [
+  { key: 'R', copy: 'to replay from the start' },
+  { key: 'Z', copy: 'to use Fill screen for sharper captures' },
+];
+
+function RecordingTip({ tip }) {
+  return (
+    <span className="hint-tip-copy">
+      Press <kbd className="hint-kbd">{tip.key}</kbd> {tip.copy}
+    </span>
+  );
+}
 
 export default function TopBar({
   status,
@@ -15,6 +30,19 @@ export default function TopBar({
   onHome,
   onReRecord,
 }) {
+  const [tipIndex, setTipIndex] = useState(0);
+  const shouldRotateTips = hasPrototype && !isRecording && !hasCapturedTake;
+
+  useEffect(() => {
+    setTipIndex(0);
+    if (!shouldRotateTips) return undefined;
+
+    const interval = window.setInterval(() => {
+      setTipIndex((current) => (current + 1) % RECORDING_TIPS.length);
+    }, 4000);
+    return () => window.clearInterval(interval);
+  }, [shouldRotateTips]);
+
   return (
     <header className="topbar" role="banner">
       <p className="status-text visually-hidden" aria-live="polite">
@@ -82,7 +110,22 @@ export default function TopBar({
 
         {hasPrototype && (isRecording || !hasCapturedTake) && (
           <span className="hint-tip">
-            Press <kbd className="hint-kbd">R</kbd> to replay from starting point
+            {isRecording ? (
+              <RecordingTip tip={RECORDING_TIPS[0]} />
+            ) : (
+              <span className="hint-tip-viewport">
+                <span
+                  className="hint-tip-track"
+                  style={{ '--hint-tip-index': tipIndex }}
+                >
+                  {RECORDING_TIPS.map((tip, index) => (
+                    <span key={tip.key} aria-hidden={index !== tipIndex}>
+                      <RecordingTip tip={tip} />
+                    </span>
+                  ))}
+                </span>
+              </span>
+            )}
           </span>
         )}
       </div>
