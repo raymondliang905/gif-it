@@ -1,8 +1,8 @@
 // Video-to-GIF frame extraction, faithfully replicating Gifski's frame-timing
 // pipeline, then feeding each sampled frame through the SAME crop → corner-radius
-// → matte → resize → dedup chain the prototype path uses. All three capture modes
-// (prototype, uploaded video, tab recording) converge on identical, transparency-
-// correct frames for the single gifski encoder.
+// → resize → dedup chain the prototype path uses. All three capture modes
+// (prototype, uploaded video, tab recording) converge on identical frames for
+// the single gifski encoder.
 //
 // Three Gifski behaviours replicated for frame SELECTION:
 //
@@ -32,7 +32,7 @@
 // memory budget below trims fps so the buffered frame set stays within a tab.
 //
 // PROCESSING happens in a SECOND pass (post-collection) with rAF yields, instead
-// of inside the rVFC callback — processing the corner-radius/matte inline would
+// of inside the rVFC callback — processing the corner-radius inline would
 // stall playback and drop frames (the bug this file originally fixed).
 
 import { MIN_FRAME_DURATION_MS, MAX_GIF_LONG_EDGE } from '../constants.js';
@@ -200,10 +200,10 @@ export async function extractAndProcessVideoRange({
 
   if (rawFrames.length === 0) throw new Error('No frames produced from the trim range.');
 
-  // ── Second pass: corner-radius → matte → dedup ────────────────────────────
+  // ── Second pass: corner-radius → dedup ────────────────────────────────────
   // Spatial crop is already done by the drawImage pass above; pass null so
-  // processFrameImageData skips the cropImageData step. Only corner-radius
-  // and the light-corner matte need to be applied.
+  // processFrameImageData skips the cropImageData step. Only the corner-radius
+  // mask needs to be applied.
   //
   // Corner radius: scale from fitted-crop space → output space.
   // For a full-frame crop, baseRect.width = fittedWidth → same as old sx formula.

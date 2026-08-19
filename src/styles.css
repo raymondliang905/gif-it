@@ -635,8 +635,12 @@ input[type="range"] {
   position: absolute;
   min-width: 20px;
   min-height: 20px;
-  border: 2px solid var(--accent);
-  box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.48);
+  /* Keep the crop rectangle itself equal to the clear interior. Drawing the
+     stroke as an outer shadow makes its inside edge the exact export boundary. */
+  border: 0;
+  box-shadow:
+    0 0 0 2px var(--accent),
+    0 0 0 9999px rgba(0, 0, 0, 0.48);
   cursor: move;
   touch-action: none;
 }
@@ -652,31 +656,31 @@ input[type="range"] {
 }
 
 .crop-handle.nw {
-  top: -7px;
-  left: -7px;
+  top: -6px;
+  left: -6px;
   cursor: nwse-resize;
 }
 
 .crop-handle.ne {
-  top: -7px;
-  right: -7px;
+  top: -6px;
+  right: -6px;
   cursor: nesw-resize;
 }
 
 .crop-handle.sw {
-  bottom: -7px;
-  left: -7px;
+  bottom: -6px;
+  left: -6px;
   cursor: nesw-resize;
 }
 
 .crop-handle.se {
-  right: -7px;
-  bottom: -7px;
+  right: -6px;
+  bottom: -6px;
   cursor: nwse-resize;
 }
 
 .crop-handle.n {
-  top: -7px;
+  top: -6px;
   left: 50%;
   transform: translateX(-50%);
   cursor: ns-resize;
@@ -684,13 +688,13 @@ input[type="range"] {
 
 .crop-handle.e {
   top: 50%;
-  right: -7px;
+  right: -6px;
   transform: translateY(-50%);
   cursor: ew-resize;
 }
 
 .crop-handle.s {
-  bottom: -7px;
+  bottom: -6px;
   left: 50%;
   transform: translateX(-50%);
   cursor: ns-resize;
@@ -698,7 +702,7 @@ input[type="range"] {
 
 .crop-handle.w {
   top: 50%;
-  left: -7px;
+  left: -6px;
   transform: translateY(-50%);
   cursor: ew-resize;
 }
