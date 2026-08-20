@@ -1,8 +1,8 @@
 // Video-to-GIF frame extraction, faithfully replicating Gifski's frame-timing
 // pipeline, then feeding each sampled frame through the SAME crop → corner-radius
-// → matte → resize → dedup chain the prototype path uses. All three capture modes
-// (prototype, uploaded video, tab recording) converge on identical, transparency-
-// correct frames for the single gifski encoder.
+// → resize → dedup chain the prototype path uses. All three capture modes
+// (prototype, uploaded video, tab recording) converge on identical frames for
+// the single gifski encoder.
 //
 // Three Gifski behaviours replicated for frame SELECTION:
 //
@@ -32,7 +32,7 @@
 // memory budget below trims fps so the buffered frame set stays within a tab.
 //
 // PROCESSING happens in a SECOND pass (post-collection) with rAF yields, instead
-// of inside the rVFC callback — processing the corner-radius/matte inline would
+// of inside the rVFC callback — processing the corner-radius inline would
 // stall playback and drop frames (the bug this file originally fixed).
 
 import { MIN_FRAME_DURATION_MS, MAX_GIF_LONG_EDGE } from '../constants.js';
@@ -41,6 +41,68 @@ import { areFramesVisuallyDuplicate } from './frame-export.js';
 
 function nextAnimationFrame() {
   return new Promise((resolve) => window.requestAnimationFrame(resolve));
+}
+
+// Map the crop selected in the editor's fixed preview coordinate space onto
+// one decoded video frame. Screen-recording containers can change dimensions
+// between frames, while the editor displays each frame with object-fit:
+// contain. Recomputing this transform per frame makes export match that view.
+export function containedCropDrawRect({
+  frameWidth,
+  frameHeight,
+  viewportWidth,
+  viewportHeight,
+  cropRect,
+  outputWidth,
+  outputHeight,
+}) {
+  if (
+    !(frameWidth > 0) || !(frameHeight > 0) ||
+    !(viewportWidth > 0) || !(viewportHeight > 0) ||
+    !(cropRect?.width > 0) || !(cropRect?.height > 0) ||
+    !(outputWidth > 0) || !(outputHeight > 0)
+  ) {
+    return null;
+  }
+
+  const containScale = Math.min(
+    viewportWidth / frameWidth,
+    viewportHeight / frameHeight,
+  );
+  const containedWidth = frameWidth * containScale;
+  const containedHeight = frameHeight * containScale;
+  const containedX = (viewportWidth - containedWidth) / 2;
+  const containedY = (viewportHeight - containedHeight) / 2;
+
+  const intersectionX = Math.max(cropRect.x, containedX);
+  const intersectionY = Math.max(cropRect.y, containedY);
+  const intersectionRight = Math.min(
+    cropRect.x + cropRect.width,
+    containedX + containedWidth,
+  );
+  const intersectionBottom = Math.min(
+    cropRect.y + cropRect.height,
+    containedY + containedHeight,
+  );
+  if (intersectionRight <= intersectionX || intersectionBottom <= intersectionY) {
+    return null;
+  }
+
+  const intersectionWidth = intersectionRight - intersectionX;
+  const intersectionHeight = intersectionBottom - intersectionY;
+  const outputScaleX = outputWidth / cropRect.width;
+  const outputScaleY = outputHeight / cropRect.height;
+
+  return {
+    sourceX: (intersectionX - containedX) / containScale,
+    sourceY: (intersectionY - containedY) / containScale,
+    sourceWidth: intersectionWidth / containScale,
+    sourceHeight: intersectionHeight / containScale,
+    destinationX: (intersectionX - cropRect.x) * outputScaleX,
+    destinationY: (intersectionY - cropRect.y) * outputScaleY,
+    destinationWidth: intersectionWidth * outputScaleX,
+    destinationHeight: intersectionHeight * outputScaleY,
+  };
 }
 
 export async function extractAndProcessVideoRange({
@@ -171,9 +233,38 @@ export async function extractAndProcessVideoRange({
 
       const t = meta.mediaTime * 1000;
 
-      // Draw only the native crop region, scaled to fill the output canvas.
-      // One GPU pass: crop + scale together, no second spatial crop needed.
-      ctx.drawImage(video, nativeCropX, nativeCropY, nativeCropW, nativeCropH, 0, 0, outW, outH);
+      // The decoded dimensions can change after frame one in MediaRecorder
+      // WebMs. Recreate the editor's object-fit: contain layout for this exact
+      // frame, then intersect it with the fixed user-selected crop rectangle.
+      const frameWidth = meta.width || video.videoWidth || nativeW;
+      const frameHeight = meta.height || video.videoHeight || nativeH;
+      const drawRect = containedCropDrawRect({
+        frameWidth,
+        frameHeight,
+        viewportWidth: fittedWidth || nativeW,
+        viewportHeight: fittedHeight || nativeH,
+        cropRect: baseRect,
+        outputWidth: outW,
+        outputHeight: outH,
+      });
+
+      // Match the dark letterbox used by the editor when a changed-aspect
+      // frame no longer fills the original preview viewport.
+      ctx.fillStyle = '#050706';
+      ctx.fillRect(0, 0, outW, outH);
+      if (drawRect) {
+        ctx.drawImage(
+          video,
+          drawRect.sourceX,
+          drawRect.sourceY,
+          drawRect.sourceWidth,
+          drawRect.sourceHeight,
+          drawRect.destinationX,
+          drawRect.destinationY,
+          drawRect.destinationWidth,
+          drawRect.destinationHeight,
+        );
+      }
       const currImageData = ctx.getImageData(0, 0, outW, outH);
 
       while (nextTargetIdx < targets.length && t > targets[nextTargetIdx]) {
@@ -200,10 +291,10 @@ export async function extractAndProcessVideoRange({
 
   if (rawFrames.length === 0) throw new Error('No frames produced from the trim range.');
 
-  // ── Second pass: corner-radius → matte → dedup ────────────────────────────
+  // ── Second pass: corner-radius → dedup ────────────────────────────────────
   // Spatial crop is already done by the drawImage pass above; pass null so
-  // processFrameImageData skips the cropImageData step. Only corner-radius
-  // and the light-corner matte need to be applied.
+  // processFrameImageData skips the cropImageData step. Only the corner-radius
+  // mask needs to be applied.
   //
   // Corner radius: scale from fitted-crop space → output space.
   // For a full-frame crop, baseRect.width = fittedWidth → same as old sx formula.

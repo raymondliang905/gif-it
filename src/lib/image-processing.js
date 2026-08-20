@@ -1,8 +1,4 @@
-import {
-  EDGE_MATTE_COLOR_DELTA,
-  EDGE_MATTE_MIN_LUMA,
-  MAX_GIF_LONG_EDGE,
-} from '../constants.js';
+import { MAX_GIF_LONG_EDGE } from '../constants.js';
 import { clampDimension } from './formatters.js';
 
 export function fullCropRect(imageData) {
@@ -212,103 +208,10 @@ export function applyCornerRadius(imageData, radiusValue) {
   return rounded;
 }
 
-function colorLuma([r, g, b]) {
-  return r * 0.2126 + g * 0.7152 + b * 0.0722;
-}
-
-function sampleCornerColor(imageData, corner) {
-  const { data, width, height } = imageData;
-  const size = Math.max(1, Math.min(8, Math.floor(Math.min(width, height) / 12)));
-  const startX = corner.includes('e') ? width - size : 0;
-  const startY = corner.includes('s') ? height - size : 0;
-  let r = 0, g = 0, b = 0, count = 0;
-  for (let y = startY; y < startY + size; y += 1) {
-    for (let x = startX; x < startX + size; x += 1) {
-      const offset = (y * width + x) * 4;
-      if (data[offset + 3] < 16) continue;
-      r += data[offset];
-      g += data[offset + 1];
-      b += data[offset + 2];
-      count += 1;
-    }
-  }
-  return count ? [r / count, g / count, b / count] : null;
-}
-
-function isColorNear(data, offset, color, maxDelta = EDGE_MATTE_COLOR_DELTA) {
-  const dr = data[offset] - color[0];
-  const dg = data[offset + 1] - color[1];
-  const db = data[offset + 2] - color[2];
-  return dr * dr + dg * dg + db * db <= maxDelta;
-}
-
-export function makeLightCornerMatteTransparent(imageData, referenceImageData, cornerRadius = 0) {
-  const transparent = new ImageData(
-    new Uint8ClampedArray(imageData.data),
-    imageData.width,
-    imageData.height,
-  );
-  const { data, width, height } = transparent;
-  // The matte only ever cleans the light pixels inside the rounded-corner boxes.
-  // Bounding the flood-fill to a radius×radius box per corner is essential:
-  // unbounded, it walks along any connected light region and erases an entire
-  // light background — exactly the "video loses the background" failure when a
-  // full-frame clip of a light UI has light corners connected to the whole frame.
-  // With no corner radius there is no matte to clean, so do nothing.
-  const radius = Math.min(
-    Math.max(0, Math.round(cornerRadius)),
-    Math.floor(Math.min(width, height) / 2),
-  );
-  if (radius < 1) return transparent;
-  const visited = new Uint8Array(width * height);
-  const queue = new Int32Array(width * height);
-  const corners = [
-    { name: 'nw', x: 0, y: 0, minX: 0, maxX: radius, minY: 0, maxY: radius },
-    { name: 'ne', x: width - 1, y: 0, minX: width - radius, maxX: width, minY: 0, maxY: radius },
-    { name: 'sw', x: 0, y: height - 1, minX: 0, maxX: radius, minY: height - radius, maxY: height },
-    { name: 'se', x: width - 1, y: height - 1, minX: width - radius, maxX: width, minY: height - radius, maxY: height },
-  ];
-
-  function removeConnectedMatte(corner, color) {
-    let head = 0, tail = 0;
-    const tryEnqueue = (x, y) => {
-      if (x < corner.minX || y < corner.minY || x >= corner.maxX || y >= corner.maxY) return;
-      const index = y * width + x;
-      if (visited[index]) return;
-      const offset = index * 4;
-      if (data[offset + 3] >= 16 && !isColorNear(data, offset, color)) return;
-      visited[index] = 1;
-      queue[tail] = index;
-      tail += 1;
-    };
-    tryEnqueue(corner.x, corner.y);
-    while (head < tail) {
-      const index = queue[head];
-      head += 1;
-      const x = index % width;
-      const y = Math.floor(index / width);
-      const offset = index * 4;
-      data[offset + 3] = 0;
-      tryEnqueue(x + 1, y);
-      tryEnqueue(x - 1, y);
-      tryEnqueue(x, y + 1);
-      tryEnqueue(x, y - 1);
-    }
-  }
-
-  for (const corner of corners) {
-    const color = sampleCornerColor(referenceImageData, corner.name);
-    if (!color || colorLuma(color) < EDGE_MATTE_MIN_LUMA) continue;
-    removeConnectedMatte(corner, color);
-  }
-  return transparent;
-}
-
 export function processFrameImageData(imageData, cropRect, cornerRadius) {
   const rect = cropRect ?? fullCropRect(imageData);
   const cropped = cropImageData(imageData, rect);
-  const rounded = applyCornerRadius(cropped, cornerRadius);
-  return makeLightCornerMatteTransparent(rounded, cropped, cornerRadius);
+  return applyCornerRadius(cropped, cornerRadius);
 }
 
 export function exportReadyImageData(imageData, cropRect, cornerRadius, gifLongEdge) {

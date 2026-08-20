@@ -565,9 +565,9 @@ export default function App() {
         const videoFps = Math.min(video.sourceFps || 24, maxFps);
 
         // Sample the trim window and run every frame through the SAME
-        // crop → corner-radius → matte → resize → dedup chain the prototype
-        // path uses, so all three modes produce identical, transparency-correct
-        // frames for the single gifski encoder.
+        // crop → corner-radius → resize → dedup chain the prototype
+        // path uses, so all three modes produce identical, deterministically
+        // cropped frames for the single gifski encoder.
         result = await extractAndProcessVideoRange({
           videoSource: video,
           startMs: trim.start,

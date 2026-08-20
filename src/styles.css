@@ -134,20 +134,47 @@ button:disabled {
   font-weight: 760;
 }
 
-/* Full-text hotkey tip shown before + during recording (Figma's own "R" replay
-   shortcut restarts the embedded prototype from its first frame). */
+/* Hotkey guidance rotates before recording; replay remains visible while the
+   capture is running. */
 .hint-tip {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
+  height: 22px;
+  overflow: hidden;
   color: var(--muted);
   font-size: 12px;
   font-weight: 600;
   white-space: nowrap;
 }
 
+.hint-tip-viewport {
+  display: block;
+  height: 22px;
+  overflow: hidden;
+}
+
+.hint-tip-track {
+  display: grid;
+  grid-auto-rows: 22px;
+  transform: translateY(calc(var(--hint-tip-index, 0) * -22px));
+  transition: transform 280ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.hint-tip-copy {
+  height: 22px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
 .hint-tip .hint-kbd {
   margin: 0 1px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hint-tip-track {
+    transition: none;
+  }
 }
 
 .app-shell {
@@ -635,8 +662,12 @@ input[type="range"] {
   position: absolute;
   min-width: 20px;
   min-height: 20px;
-  border: 2px solid var(--accent);
-  box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.48);
+  /* Keep the crop rectangle itself equal to the clear interior. Drawing the
+     stroke as an outer shadow makes its inside edge the exact export boundary. */
+  border: 0;
+  box-shadow:
+    0 0 0 2px var(--accent),
+    0 0 0 9999px rgba(0, 0, 0, 0.48);
   cursor: move;
   touch-action: none;
 }
@@ -652,31 +683,31 @@ input[type="range"] {
 }
 
 .crop-handle.nw {
-  top: -7px;
-  left: -7px;
+  top: -6px;
+  left: -6px;
   cursor: nwse-resize;
 }
 
 .crop-handle.ne {
-  top: -7px;
-  right: -7px;
+  top: -6px;
+  right: -6px;
   cursor: nesw-resize;
 }
 
 .crop-handle.sw {
-  bottom: -7px;
-  left: -7px;
+  bottom: -6px;
+  left: -6px;
   cursor: nesw-resize;
 }
 
 .crop-handle.se {
-  right: -7px;
-  bottom: -7px;
+  right: -6px;
+  bottom: -6px;
   cursor: nwse-resize;
 }
 
 .crop-handle.n {
-  top: -7px;
+  top: -6px;
   left: 50%;
   transform: translateX(-50%);
   cursor: ns-resize;
@@ -684,13 +715,13 @@ input[type="range"] {
 
 .crop-handle.e {
   top: 50%;
-  right: -7px;
+  right: -6px;
   transform: translateY(-50%);
   cursor: ew-resize;
 }
 
 .crop-handle.s {
-  bottom: -7px;
+  bottom: -6px;
   left: 50%;
   transform: translateX(-50%);
   cursor: ns-resize;
@@ -698,7 +729,7 @@ input[type="range"] {
 
 .crop-handle.w {
   top: 50%;
-  left: -7px;
+  left: -6px;
   transform: translateY(-50%);
   cursor: ew-resize;
 }
